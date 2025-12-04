@@ -118,10 +118,15 @@ inline bool uwbMeasurementToNed(const sensor_uwb_s &uwb_report,
 	const float phi_rad = math::radians(uwb_report.aoa_elevation_dev);
 
 	const float distance = uwb_report.distance;
+        // Z pointing opposite to the direction of the measurement, non destroverse
+	// const float delta_z = -distance * cosf(phi_rad) * cosf(theta_rad);
+	// const float delta_y = distance * cosf(phi_rad) * sinf(theta_rad);
+	// const float delta_x = -distance * sinf(phi_rad);
 
-	const float delta_z = -distance * cosf(phi_rad) * cosf(theta_rad);
-	const float delta_y = distance * cosf(phi_rad) * sinf(theta_rad);
-	const float delta_x = -distance * sinf(phi_rad);
+	// Z pointing in direction of the measurement
+	const float delta_z = distance * cosf(phi_rad) * cosf(theta_rad);
+        const float delta_y =  -distance * cosf(phi_rad) * sinf(theta_rad);
+        const float delta_x = distance * sinf(phi_rad);
 
 	const matrix::Vector3f relative_pos_sensor(uwb_report.offset_x + delta_x,
 			uwb_report.offset_y + delta_y,

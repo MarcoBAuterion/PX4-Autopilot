@@ -1,0 +1,7 @@
+menuconfig MODULES_UWB_TO_CARTESIAN
+	bool "uwb_to_cartesian"
+	default n
+	depends on !BOARD_CONSTRAINED_MEMORY
+	depends on !BOARD_CONSTRAINED_FLASH
+	---help---
+		Enable support for a simple UWB to cartesian landing target publisher.
