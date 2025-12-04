@@ -58,7 +58,10 @@ Please continue reading for [upgrade instructions](#upgrade-guide).
 
 ### Simulation
 
-- TBD
+- Overhaul rover simulation:
+  - Add synthetic differential rover model: [PX4-gazebo-models#107](https://github.com/PX4/PX4-gazebo-models/pull/107)
+  - Add synthetic mecanum rover model: [PX4-gazebo-models#113](https://github.com/PX4/PX4-gazebo-models/pull/113)
+  - Update synthetic ackermann rover model: [PX4-gazebo-models#117](https://github.com/PX4/PX4-gazebo-models/pull/117)
 
 ### Ethernet
 
@@ -67,10 +70,15 @@ Please continue reading for [upgrade instructions](#upgrade-guide).
 ### uXRCE-DDS / ROS2
 
 - [PX4 ROS 2 Interface Library](../ros2/px4_ros2_control_interface.md) support for [Fixed Wing lateral/longitudinal setpoint](../ros2/px4_ros2_control_interface.md#fixed-wing-lateral-and-longitudinal-setpoint-fwlaterallongitudinalsetpointtype) (`FwLateralLongitudinalSetpointType`) and [VTOL transitions](../ros2/px4_ros2_control_interface.md#controlling-a-vtol). ([PX4-Autopilot#24056](https://github.com/PX4/PX4-Autopilot/pull/24056)).
+- [PX4 ROS 2 Interface Library](../ros2/px4_ros2_control_interface.md) support for [ROS-based waypoint missions](../ros2/px4_ros2_waypoint_missions.md).
 
 ### MAVLink
 
 - TBD
+
+### RC
+
+- Parse ELRS Status and Link Statistics TX messages in the CRSF parser.
 
 ### Multi-Rotor
 
@@ -85,10 +93,13 @@ Please continue reading for [upgrade instructions](#upgrade-guide).
 
 - [Fixed Wing Takeoff mode](../flight_modes_fw/takeoff.md) will now keep climbing with level wings on position loss.
   A target takeoff waypoint can be set to control takeoff course and loiter altitude. ([PX4-Autopilot#25083](https://github.com/PX4/PX4-Autopilot/pull/25083)).
+- Automatically suppress angular rate oscillations using [Gain compression](../features_fw/gain_compression.md). ([PX4-Autopilot#25840: FW rate control: add gain compression algorithm](https://github.com/PX4/PX4-Autopilot/pull/25840))
 
 ### Rover
 
 - Removed deprecated rover module ([PX4-Autopilot#25054](https://github.com/PX4/PX4-Autopilot/pull/25054)).
+- Add support for [Apps & API](../flight_modes_rover/api.md) ([PX4-Autopilot#25074](https://github.com/PX4/PX4-Autopilot/pull/25074), [PX4-ROS2-Interface-Lib#140](https://github.com/Auterion/px4-ros2-interface-lib/pull/140)).
+- Update [rover simulation](../frames_rover/index.md#simulation) ([PX4-Autopilot#25644](https://github.com/PX4/PX4-Autopilot/pull/25644)) (see [Simulation](#simulation) release note for details).
 
 ### ROS 2
 

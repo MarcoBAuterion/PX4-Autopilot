@@ -44,14 +44,11 @@ bool FlightTaskAuto::activate(const trajectory_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTask::activate(last_setpoint);
 
+	// Set setpoints equal current state.
 	_position_setpoint = _position;
 	_velocity_setpoint = _velocity;
 	_yaw_setpoint = _yaw;
 	_yawspeed_setpoint = 0.0f;
-
-	// Set setpoints equal current state.
-	_velocity_setpoint = _velocity;
-	_position_setpoint = _position;
 
 	Vector3f vel_prev{last_setpoint.velocity};
 	Vector3f pos_prev{last_setpoint.position};
@@ -271,21 +268,28 @@ void FlightTaskAuto::_prepareLandSetpoints()
 		Vector2f sticks_ne = sticks_xy;
 		Sticks::rotateIntoHeadingFrameXY(sticks_ne, _yaw, _land_heading);
 
-		const float distance_to_circle = math::trajectory::getMaxDistanceToCircle(_position.xy(), _initial_land_position.xy(),
-						 _param_mpc_land_radius.get(), sticks_ne);
-		float max_speed;
+		float max_speed = INFINITY;
 
-		if (PX4_ISFINITE(distance_to_circle)) {
-			max_speed = math::trajectory::computeMaxSpeedFromDistance(_stick_acceleration_xy.getMaxJerk(),
-					_stick_acceleration_xy.getMaxAcceleration(), distance_to_circle, 0.f);
+		if (_param_mpc_land_radius.get() > FLT_EPSILON) {
 
-			if (max_speed < 0.5f) {
+			// = NaN if we are outside of the allowed circle and nudging does not point back towards it
+			const float distance_to_circle = math::trajectory::getMaxDistanceToCircle(_position.xy(), _initial_land_position.xy(),
+							 _param_mpc_land_radius.get(), sticks_ne);
+
+			if (PX4_ISFINITE(distance_to_circle)) {
+
+				// We are inside of the allowed circle. Limit speed so we can always brake in time to not leave the circle.
+				max_speed = math::trajectory::computeMaxSpeedFromDistance(_stick_acceleration_xy.getMaxJerk(),
+						_stick_acceleration_xy.getMaxAcceleration(), distance_to_circle, 0.f);
+
+				if (max_speed < 0.5f) {
+					sticks_xy.setZero();
+				}
+
+			} else {
+				max_speed = 0.f;
 				sticks_xy.setZero();
 			}
-
-		} else {
-			max_speed = 0.f;
-			sticks_xy.setZero();
 		}
 
 		_stick_acceleration_xy.setVelocityConstraint(max_speed);
@@ -617,6 +621,7 @@ State FlightTaskAuto::_getCurrentState()
 	const Vector3f u_prev_to_target = (_triplet_target - _triplet_prev_wp).unit_or_zero();
 	const Vector3f prev_to_pos = _position - _triplet_prev_wp;
 	const Vector3f pos_to_target = _triplet_target - _position;
+
 	// Calculate the closest point to the vehicle position on the line prev_wp - target
 	_closest_pt = _triplet_prev_wp + u_prev_to_target * (prev_to_pos * u_prev_to_target);
 
@@ -634,10 +639,9 @@ State FlightTaskAuto::_getCurrentState()
 		// Previous is in front
 		return_state = State::previous_infront;
 
-	} else if ((_position - _closest_pt).longerThan(_target_acceptance_radius)) {
+	} else if (_type != WaypointType::land && (_position - _closest_pt).longerThan(_target_acceptance_radius)) {
 		// Vehicle too far from the track
 		return_state = State::offtrack;
-
 	}
 
 	return return_state;

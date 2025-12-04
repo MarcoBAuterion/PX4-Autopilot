@@ -106,12 +106,19 @@ The development version, fetched using `--edge` above, does work.
 
 ### Build/Run within ROS 2 Workspace
 
-The agent can be built and launched within a ROS 2 workspace (or build standalone and launched from a workspace.
+The agent can be built and launched within a ROS 2 workspace (or build standalone and launched from a workspace).
 You must already have installed ROS 2 following the instructions in: [ROS 2 User Guide > Install ROS 2](../ros2/user_guide.md#install-ros-2).
 
 :::warning
 This approach will use the existing ROS 2 versions of the Agent dependencies, such as `fastcdr` and `fastdds`.
-This considerably speeds up the build process but requires that the Agent dependency versions match the ROS 2 ones.
+This considerably speeds up the build process but requires that the Agent dependency versions match the ROS 2 ones:
+
+| ROS 2 version | Micro-XRCE-DDS-Agent version           |
+| ------------- | -------------------------------------- |
+| Foxy          | v2.4.2 |
+| Humble        | v2.4.2 |
+| Jazzy         | v2.4.3 |
+
 :::
 
 To build the agent within ROS:
@@ -124,14 +131,53 @@ To build the agent within ROS:
 
 2. Clone the source code for the eProsima [Micro-XRCE-DDS-Agent](https://github.com/eProsima/Micro-XRCE-DDS-Agent) to the `/src` directory (the `main` branch is cloned by default):
 
+   ::::tabs
+
+   ::: tab jazzy
+
    ```sh
    cd ~/px4_ros_uxrce_dds_ws/src
    git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
    ```
 
+
+:::
+
+   ::: tab humble
+
+   ```sh
+   cd ~/px4_ros_uxrce_dds_ws/src
+   git clone -b v2.4.2 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+   ```
+
+
+:::
+
+   ::: tab foxy
+
+   ```sh
+   cd ~/px4_ros_uxrce_dds_ws/src
+   git clone -b v2.4.2 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+   ```
+
+
+:::
+
+   ::::
+
 3. Source the ROS 2 development environment, and compile the workspace using `colcon`:
 
    :::: tabs
+
+   ::: tab jazzy
+
+   ```sh
+   source /opt/ros/jazzy/setup.bash
+   colcon build
+   ```
+
+
+:::
 
    ::: tab humble
 
@@ -162,6 +208,16 @@ To run the micro XRCE-DDS agent in the workspace:
 1. Source the `local_setup.bash` to make the executables available in the terminal (also `setup.bash` if using a new terminal).
 
    :::: tabs
+
+   ::: tab jazzy
+
+   ```sh
+   source /opt/ros/jazzy/setup.bash
+   source install/local_setup.bash
+   ```
+
+
+:::
 
    ::: tab humble
 
@@ -235,7 +291,6 @@ The configuration can be done using the [UXRCE-DDS parameters](../advanced_confi
 - [UXRCE_DDS_CFG](../advanced_config/parameter_reference.md#UXRCE_DDS_CFG): Set the port to connect on, such as `TELEM2`, `Ethernet`, or `Wifi`.
 
 - If using an Ethernet connection:
-
   - [UXRCE_DDS_PRT](../advanced_config/parameter_reference.md#UXRCE_DDS_PRT):
     Use this to specify the agent UDP listening port.
     The default value is `8888`.
@@ -259,14 +314,12 @@ The configuration can be done using the [UXRCE-DDS parameters](../advanced_confi
       ```
 
 - If using a serial connection:
-
   - [SER_TEL2_BAUD](../advanced_config/parameter_reference.md#SER_TEL2_BAUD), [SER_URT6_BAUD](../advanced_config/parameter_reference.md#SER_URT6_BAUD) (and so on):
     Use the `_BAUD` parameter associated with the serial port to set the baud rate.
     For example, you'd set a value for `SER_TEL2_BAUD` if you are connecting to the companion using `TELEM2`.
     For more information see [Serial port configuration](../peripherals/serial_configuration.md#serial-port-configuration).
 
 - Some setups might also need these parameters to be set:
-
   - [UXRCE_DDS_KEY](../advanced_config/parameter_reference.md#UXRCE_DDS_KEY): The uXRCE-DDS key.
     If you're working in a multi-client, single agent configuration, each client should have a unique non-zero key.
     This is primarily important for multi-vehicle simulations, where all clients are connected in UDP to the same agent.
@@ -279,7 +332,7 @@ The configuration can be done using the [UXRCE-DDS parameters](../advanced_confi
   - [UXRCE_DDS_SYNCT](../advanced_config/parameter_reference.md#UXRCE_DDS_SYNCT): Bridge time synchronization enable.
     The uXRCE-DDS client module can synchronize the timestamp of the messages exchanged over the bridge.
     This is the default configuration. In certain situations, for example during [simulations](../ros2/user_guide.md#ros-gazebo-and-px4-time-synchronization), this feature may be disabled.
-  - [`UXRCE_DDS_NS_IDX`](../advanced_config/parameter_reference.md#UXRCE_DDS_NS_IDX): Index-based namespace definition
+  - <Badge type="tip" text="PX4 v1.17" /> [`UXRCE_DDS_NS_IDX`](../advanced_config/parameter_reference.md#UXRCE_DDS_NS_IDX): Index-based namespace definition
     Setting this parameter to any value other than `-1` creates a namespace with the prefix `uav_` and the specified value, e.g. `uav_0`, `uav_1`, etc.
     See [namespace](#customizing-the-namespace) for methods to define richer or arbitrary namespaces.
 
@@ -401,6 +454,7 @@ uxrce_dds_client start -n fancy_uav
 ```
 
 This can be included in `etc/extras.txt` as part of a custom [System Startup](../concept/system_startup.md).
+:::
 
 ## PX4 ROS 2 QoS Settings
 
@@ -462,6 +516,11 @@ publications:
   - topic: /fmu/out/vehicle_trajectory_waypoint_desired
     type: px4_msgs::msg::VehicleTrajectoryWaypoint
 
+  - topic: /fmu/out/vehicle_imu
+    type: px4_msgs::msg::VehicleImu
+    rate_limit: 50.
+    instance: 1 # OPTIONAL
+
 subscriptions:
 
   - topic: /fmu/in/offboard_control_mode
@@ -494,6 +553,9 @@ Each (`topic`,`type`) pairs defines:
 4. The message type (`VehicleOdometry`, `VehicleStatus`, `OffboardControlMode`, etc.) and the ROS 2 package (`px4_msgs`) that is expected to provide the message definition.
 5. **(Optional)**: An additional `rate_limit` field (only for publication entries), which specifies the maximum rate (Hz) at which messages will be published on this topic by PX4 to ROS 2.
    If left unspecified, the maximum publication rate limit is set to 100 Hz.
+6. <Badge type="tip" text="main (planned for: PX4 v1.18)" /> **(Optional)**: An additional `instance` field (only for publication entries), which lets you select which instance of a [multi-instance topic](./uorb.md#multi-instance) you want to be published to ROS 2.
+   If provided, this option changes the ROS 2 topic name of the advertised uORB topic appending the instance number: `fmu/out/[uorb topic name][instance]` (plus eventual namespace and message version).
+   In the example above the final topic name would be `/fmu/out/vehicle_imu1`.
 
 `subscriptions` and `subscriptions_multi` allow us to choose the uORB topic instance that ROS 2 topics are routed to: either a shared instance that may also be getting updates from internal PX4 uORB publishers, or a separate instance that is reserved for ROS2 publications, respectively.
 Without this mechanism all ROS 2 messages would be routed to the _same_ uORB topic instance (because ROS 2 does not have the concept of [multiple topic instances](../middleware/uorb.md#multi-instance)), and it would not be possible for PX4 subscribers to differentiate between streams from ROS 2 or PX4 publishers.
@@ -535,7 +597,7 @@ For a list of services, details and examples see the [service documentation](../
 These guidelines explain how to migrate from using PX4 v1.13 [Fast-RTPS](../middleware/micrortps.md) middleware to PX4 v1.14 `uXRCE-DDS` middleware.
 These are useful if you have [ROS 2 applications written for PX4 v1.13](https://docs.px4.io/v1.13/en/ros/ros2_comm.html), or you have used Fast-RTPS to interface your applications to PX4 [directly](https://docs.px4.io/v1.13/en/middleware/micrortps.html#agent-in-an-offboard-fast-dds-interface-ros-independent).
 
-::: info
+:::info
 This section contains migration-specific information.
 You should also read the rest of this page to properly understand uXRCE-DDS.
 :::
