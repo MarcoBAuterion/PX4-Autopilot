@@ -56,7 +56,7 @@ namespace vision_target_estimator
 using namespace time_literals;
 
 /* Valid AoA measurement range between -60.00° and +60.00° for UWB*/
-static constexpr float max_uwb_aoa_angle_degree = 60.0f;
+static constexpr float max_uwb_aoa_angle_degree = 59.9f;
 
 static constexpr float kMinObservationNoise = 1e-2f;
 static constexpr float kMinNisThreshold = 0.1f;
