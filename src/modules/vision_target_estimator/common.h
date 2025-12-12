@@ -128,14 +128,20 @@ inline bool uwbMeasurementToNed(const sensor_uwb_s &uwb_report,
         const float delta_y =  -distance * cosf(phi_rad) * sinf(theta_rad);
         const float delta_x = distance * sinf(phi_rad);
 
-	const matrix::Vector3f relative_pos_sensor(uwb_report.offset_x + delta_x,
-			uwb_report.offset_y + delta_y,
-			uwb_report.offset_z + delta_z);
+	matrix::Vector3f sensor_T_base = matrix::Vector3f(uwb_report.offset_x,
+			uwb_report.offset_y,
+			uwb_report.offset_z);
 
-	const matrix::Quaternionf sensor_rotation = get_rot_quaternion(static_cast<enum Rotation>(uwb_report.orientation));
-	const matrix::Quaternionf body_to_ned = vehicle_att * sensor_rotation;
+	matrix::Vector3f sensor_T_target  = matrix::Vector3f(delta_x,
+			delta_y,
+			delta_z);
 
-	relative_pos_ned = body_to_ned.rotateVector(relative_pos_sensor);
+	const matrix::Quaternionf sensor_T_body_roatation = get_rot_quaternion(static_cast<enum Rotation>(uwb_report.orientation));
+
+	matrix::Vector3f base_T_target = sensor_T_body_roatation.rotateVector(sensor_T_target) + sensor_T_base;
+
+	relative_pos_ned = vehicle_att.rotateVector(base_T_target);
+
 	return true;
 }
 

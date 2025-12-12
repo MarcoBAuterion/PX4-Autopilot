@@ -342,6 +342,10 @@ private:
 	Vector3fStamped _velocity_offset_ned{};
 	Vector3fStamped _gps_pos_offset_ned{};
 
+	// Keep last two UWB-derived relative positions to estimate velocity at init
+	Vector3fStamped _uwb_pos_prev{};
+	Vector3fStamped _uwb_pos_curr{};
+
 #if defined(CONFIG_VTEST_MOVING)
 	Vector3fStamped _target_gps_vel {};
 	float _mpc_z_v_auto_dn{0.f};

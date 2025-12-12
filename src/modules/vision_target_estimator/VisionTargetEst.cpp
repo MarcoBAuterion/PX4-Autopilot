@@ -59,7 +59,7 @@ namespace vision_target_estimator
 constexpr uint32_t kAccDownsampleTimeoutUs = 40_ms; // 40 ms -> 25Hz
 constexpr uint32_t kEstRestartTimeUs = 3_s; // Wait at least 3 second before re-starting the filter
 constexpr float kGravity = 9.80665f;  // m/s^2
-constexpr uint32_t kAccUpdatedTimeoutUs = 20_ms; // TODO: check if we can lower it
+constexpr uint32_t kAccUpdatedTimeoutUs = 40_ms; // TODO: check if we can lower it
 constexpr float kMinGpsOffsetM = 0.01f; // Consider GNSS not offset below 1cm
 
 VisionTargetEst::VisionTargetEst() :

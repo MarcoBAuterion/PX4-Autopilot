@@ -325,13 +325,17 @@ void VTEPosition::handleUwbData(const matrix::Quaternionf &q_att, ObsValidMaskU 
 	if (!_vte_aid_mask.flags.use_uwb) {
 		return;
 	}
-
 	if (!_sensor_uwb_sub.update(&uwb_report) || !isUwbDataValid(uwb_report)) {
 		return;
 	}
 
 	if (processObsUwb(q_att, uwb_report, uwb_obs)) {
 		fusion_mask.flags.fuse_uwb = true;
+		// Update UWB position history for velocity estimation at init
+		_uwb_pos_prev = _uwb_pos_curr;
+		_uwb_pos_curr.xyz = uwb_obs.meas_xyz;
+		_uwb_pos_curr.timestamp = uwb_obs.timestamp;
+		_uwb_pos_curr.valid = true;
 	}
 }
 
@@ -553,12 +557,19 @@ bool VTEPosition::initializeEstimator(const ObsValidMaskU &fusion_mask,
 	if (!hasNewPositionSensorData(fusion_mask)) {
 		return false;
 	}
-
+	bool gps_vel_valid = _uav_gps_vel.valid && isMeasRecent(_uav_gps_vel.timestamp);
+	bool uwb_vel_valid = false;
+	bool local_vel_valid = false;
+	if (!gps_vel_valid) {
+		if (_vte_aid_mask.flags.use_uwb) {
+			uwb_vel_valid = _uwb_pos_prev.valid && _uwb_pos_curr.valid
+					&& isMeasRecent(_uwb_pos_prev.timestamp) && isMeasRecent(_uwb_pos_curr.timestamp);
+		} else {
+			local_vel_valid = _local_velocity.valid && isMeasRecent(_local_velocity.timestamp);
+		}
+	}
 	// Check for initial velocity estimate
-	const bool has_initial_velocity_estimate = (_local_velocity.valid && isMeasRecent(_local_velocity.timestamp)) ||
-			(_uav_gps_vel.valid && isMeasRecent(_uav_gps_vel.timestamp));
-
-	if (!has_initial_velocity_estimate) {
+	if (!gps_vel_valid && !uwb_vel_valid && !local_vel_valid) {
 		PX4_WARN("No UAV velocity estimate. Estimator cannot be started.");
 		return false;
 	}
@@ -591,10 +602,15 @@ bool VTEPosition::initializeEstimator(const ObsValidMaskU &fusion_mask,
 #endif // CONFIG_VTEST_MOVING
 
 	// Define initial UAV velocity
-	if (_uav_gps_vel.valid && isMeasRecent(_uav_gps_vel.timestamp)) {
+	if (gps_vel_valid) {
 		initial_uav_velocity = _uav_gps_vel.xyz;
-
-	} else if (_local_velocity.valid && isMeasRecent(_local_velocity.timestamp)) {
+	} else if (uwb_vel_valid) {
+		const uint64_t dt_us = _uwb_pos_curr.timestamp - _uwb_pos_prev.timestamp;
+		const float dt = static_cast<float>(dt_us) / SEC2USEC_F;
+		const matrix::Vector3f dpos = _uwb_pos_curr.xyz - _uwb_pos_prev.xyz;
+		const matrix::Vector3f v_rel = dpos / dt;
+		initial_uav_velocity = -v_rel; // pos_rel_dot = -vel_uav for stationary target
+	} else if (local_vel_valid) {
 		initial_uav_velocity = _local_velocity.xyz;
 	}
 
@@ -1180,7 +1196,16 @@ bool VTEPosition::fuseMeas(const Vector3f &vehicle_acc_ned, const TargetObs &tar
 
 		if (!est.update()) {
 			all_axis_fused = false;
-			PX4_DEBUG("Obs i = %d : not fused in direction: %d", static_cast<int>(target_obs.type), j);
+			PX4_INFO("Obs i = %d : not fused in direction: %d", static_cast<int>(target_obs.type), j);
+			auto state = est.get_state();
+			PX4_INFO("State: %.3f, %.3f, %.3f", (double)state(0), (double)state(1), (double)state(2));
+			PX4_INFO("Observation: %.3f, unc: %.3f", (double)meas_j, (double)meas_unc_j);
+			PX4_INFO("dt_syn=%.2f ms, inno=%.3f var=%.3f NIS=%.3f thr=%.3f",
+				(double)(dt_sync_us / 1000.0),
+				(double)_target_innov.innovation[j],
+				(double)_target_innov.innovation_variance[j],
+				(double)est.get_test_ratio(),
+				(double)_nis_threshold);
 		}
 
 		_target_innov.observation[j] = meas_j;
@@ -1397,10 +1422,6 @@ void VTEPosition::checkMeasurementInputs()
 
 	if (_local_position.valid) {
 		_local_position.valid = isMeasUpdated(_local_position.timestamp);
-	}
-
-	if (_local_velocity.valid) {
-		_local_velocity.valid = isMeasUpdated(_local_velocity.timestamp);
 	}
 
 	if (_local_velocity.valid) {
