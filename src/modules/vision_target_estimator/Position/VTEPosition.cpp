@@ -445,6 +445,9 @@ bool VTEPosition::isUavGpsVelocityValid() const
 bool VTEPosition::updateUavGpsData()
 {
 	sensor_gps_s vehicle_gps_position;
+	if (!_vte_aid_mask.flags.use_mission_pos && !_vte_aid_mask.flags.use_uav_gps_vel) {
+		return false;
+	}
 	const bool vehicle_gps_position_updated = _vehicle_gps_position_sub.update(&vehicle_gps_position);
 
 	if (vehicle_gps_position_updated) {
@@ -1393,10 +1396,10 @@ void VTEPosition::publishTarget()
 
 #endif // CONFIG_VTEST_MOVING
 
-		_targetPosePub.publish(_target_pose);
-
+	} else {
+		_target_pose.abs_pos_valid = false;
 	}
-
+	_targetPosePub.publish(_target_pose);
 	_targetEstimatorStatePub.publish(_vte_state);
 
 	// TODO: decide what to do with Bias lim
